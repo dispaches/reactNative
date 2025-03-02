@@ -9,9 +9,35 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import riderImage from "../../../assets/rider.png";
 import userImage from "../../../assets/user.png";
+import { roleData } from "../../../data";
+import Splash from "../../../splash/Splash1";
+import React, { useContext, useState } from "react";
+import { LoginContext } from "../../../authContext/LoginContext";
+import { Pressable } from "react-native";
 
 export default function GettingStarted() {
   const navigation = useNavigation();
+  const { setUser, setRider } = useContext(LoginContext);
+  const [removeSplash, setRemoveSplash] = React.useState(false);
+
+  React.useEffect(() => {
+    setTimeout(() => {
+      setRemoveSplash(true);
+    }, 500);
+  }, []);
+
+  function handleClick(index) {
+    if (index === 0) {
+      setRider("rider");
+      console.log("rider is picked");
+      navigation.navigate("OnboardRider1");
+    } else if (index === 1) {
+      setUser("user");
+      console.log("user is picked");
+      navigation.navigate("Onboard1");
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.heading}>
@@ -21,36 +47,37 @@ export default function GettingStarted() {
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.rider}>
-        <Image source={riderImage} style={styles.image} />
-        <View style={styles.textContainer}>
-          <Text style={styles.roleRider}>Sign up as a Rider</Text>
-          <Text style={styles.subRole}>
-            Earn money by delivering packages while enjoying the flexibility to
-            work at your convenience. Stay updated with real-time job
-            notifications and take control of your schedule effortlessly.
-          </Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.user}
-        onPress={() => navigation.navigate("Onboard1")}
-      >
-        <Image source={userImage} style={styles.image} />
-        <View style={styles.textContainer}>
-          <Text style={styles.roleUser}>Sign up as a User</Text>
-          <Text style={styles.subRole}>
-            Send and track your deliveries effortlessly with a fast and reliable
-            network of riders. Enjoy a secure payment and tracking system that
-            ensures your packages reach their destination safely and on time.
-          </Text>
-        </View>
-      </TouchableOpacity>
+      {roleData?.map((role, index) => (
+        <Pressable
+          key={index}
+          style={index === 0 ? styles.rider : styles.user}
+          onPress={() => {
+            console.log("Button clicked!");
+            handleClick(index);
+          }}
+        >
+          <Image
+            source={index === 0 ? riderImage : userImage}
+            style={styles.image}
+          />
+          <View style={styles.textContainer}>
+            <Text style={index === 0 ? styles.roleRider : styles.roleUser}>
+              {role.role_cap}
+            </Text>
+            <Text style={styles.subRole}>{role.details}</Text>
+          </View>
+        </Pressable>
+      ))}
 
       <View style={styles.navigation}>
         <Text>
-          Already had an account? <Text style={styles.span}>Sign in</Text>
+          Already have an account?{" "}
+          <Text
+            style={styles.span}
+            onPress={() => navigation.navigate("Onboard1")}
+          >
+            Sign in
+          </Text>
         </Text>
       </View>
     </SafeAreaView>
@@ -67,7 +94,6 @@ const styles = StyleSheet.create({
     marginTop: 69,
     alignItems: "flex-start",
     letterSpacing: 1,
-    lineHeight: 119,
   },
   action: {
     color: "#333333",
@@ -105,7 +131,6 @@ const styles = StyleSheet.create({
     height: 24,
     resizeMode: "contain",
     marginRight: 16,
-
   },
   textContainer: {
     flex: 1,
