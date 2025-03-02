@@ -6,10 +6,12 @@ import {
   Image,
   TouchableOpacity,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import riderImage from "../../../assets/rider.png";
 import userImage from "../../../assets/user.png";
 
 export default function GettingStarted() {
+  const navigation = useNavigation();
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.heading}>
@@ -31,7 +33,10 @@ export default function GettingStarted() {
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.user}>
+      <TouchableOpacity
+        style={styles.user}
+        onPress={() => navigation.navigate("Onboard1")}
+      >
         <Image source={userImage} style={styles.image} />
         <View style={styles.textContainer}>
           <Text style={styles.roleUser}>Sign up as a User</Text>
@@ -84,7 +89,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderColor: "#cccccc",
     marginTop: 24,
-    
   },
   user: {
     flexDirection: "row",
@@ -95,12 +99,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderColor: "#cccccc",
     marginTop: 24,
-  
   },
   image: {
     width: 24,
     height: 24,
+    resizeMode: "contain",
     marginRight: 16,
+
   },
   textContainer: {
     flex: 1,

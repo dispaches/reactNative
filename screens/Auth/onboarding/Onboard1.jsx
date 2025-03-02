@@ -10,8 +10,11 @@ import {
 import riderImage from "../../../assets/delivery.png";
 import background from "../../../assets/rectangle.png";
 import { Button } from "react-native-elements";
+import { useNavigation } from "@react-navigation/native";
 
 export default function Onboard1() {
+  const navigation = useNavigation();
+
   return (
     <SafeAreaView style={styles.container}>
       <ImageBackground source={background} style={styles.containerImage}>
@@ -30,7 +33,11 @@ export default function Onboard1() {
           buttonStyle={styles.buttonSecondary}
           titleStyle={styles.buttonSecondaryText}
         />
-        <Button title="Next" buttonStyle={styles.button} />
+        <Button
+          title="Next"
+          buttonStyle={styles.button}
+          onPress={() => navigation.navigate("Onboard2")}
+        />
       </View>
     </SafeAreaView>
   );
