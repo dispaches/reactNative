@@ -30,6 +30,7 @@ import {
             title="Skip"
             buttonStyle={styles.buttonSecondary}
             titleStyle={styles.buttonSecondaryText}
+            onPress={() => navigation.navigate("Onboard4")}
           />
           <Button
             title="Next"

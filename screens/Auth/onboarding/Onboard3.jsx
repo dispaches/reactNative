@@ -31,6 +31,7 @@ export default function Onboard3() {
           title="Skip"
           buttonStyle={styles.buttonSecondary}
           titleStyle={styles.buttonSecondaryText}
+          onPress={() => navigation.navigate("Onboard4")}
         />
         <Button
           title="Next"
@@ -46,13 +47,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f2f2f2",
-
     justifyContent: "space-evenly",
   },
   containerImage: {
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 8,
   },
   image: {
     top: 24,
