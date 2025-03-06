@@ -89,7 +89,7 @@ export default function Onboard4() {
 }
 
 // Onboarding Screen Component
-function Onboard4Screen() {
+function Login() {
   const { userRole } = useContext(LoginContext);
 
   useEffect(() => {
@@ -146,7 +146,6 @@ function Onboard4Screen() {
       }, 500); // Small delay for smoother transition
     }
   }, [isConnected, userRole, navigation, redirecting]);
-  const { open } = useAppKit()
 
   return (
     <SafeAreaView style={styles.container}>
@@ -164,16 +163,14 @@ function Onboard4Screen() {
         </Text>
         <View style={{ alignItems: "center", padding: 10, margin: 10, }}>
           <AppKit />
-          <Pressable onClick={() => open()}>
-        <Text>Open Connect Modal</Text>
-      </Pressable>
+          <AppKitButton label="Sign Up" size="md" />
         </View>
         <View style={styles.navigation}>
         <Text>
-          Already have an account?{" "}
+          Create an account?{" "}
           <Text
             style={styles.span}
-            onPress={() => navigation.navigate("login")}
+            onPress={() => navigation.navigate("Onboard4")}
           >
             Sign in
           </Text>

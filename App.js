@@ -15,24 +15,34 @@ import OnboardRider1 from './screens/rider/OnboardRider1';
 import OnboardRider2 from './screens/rider/OnboardRider2';
 import OnboardRider3 from './screens/rider/OnboardRider3';
 import { LoginProvider } from "./authContext/LoginContext";
+import Login from "./screens/Auth/onboarding/Login";
+import UserDashboard from "./screens/user/UserDashboard";
 
 export const LoginContext = createContext();
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [rider, setRider] = useState(null);
-
+  const [userRole, setUserRole ] = useState(null);
+  
+  
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    if (typeof args[0] === "string" && args[0].includes("Couldn't establish socket connection")) {
+      return; // Ignore WalletConnect errors
+    }
+    originalConsoleError(...args); // Keep other errors
+  };
+  
   return (
-    <LoginProvider value={{ user, setUser, rider, setRider }}>
+    <LoginProvider value={{ userRole, setUserRole  }}>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="Splash1">
+        <Stack.Navigator initialRouteName="UserDashboard">
           <Stack.Screen name="Splash1" component={Splash1} options={{ headerShown: false }} />
           <Stack.Screen name="Splash2" component={Splash2} options={{ headerShown: false }} />
           <Stack.Screen name="GettingStarted" component={GettingStarted} options={{ headerShown: false }} />
           <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          {/* <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} /> */}
           <Stack.Screen name="ForgottenPassword" component={ForgottenPasswordScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Onboard1" component={Onboard1} options={{ headerShown: false }} />
           <Stack.Screen name="Onboard2" component={Onboard2} options={{ headerShown: false }} />
@@ -41,6 +51,8 @@ export default function App() {
           <Stack.Screen name="OnboardRider1" component={OnboardRider1} options={{ headerShown: false }} />
           <Stack.Screen name="OnboardRider2" component={OnboardRider2} options={{ headerShown: false }} />
           <Stack.Screen name="OnboardRider3" component={OnboardRider3} options={{ headerShown: false }} />
+          <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
+          <Stack.Screen name="UserDashboard" component={UserDashboard} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </LoginProvider>

@@ -17,7 +17,7 @@ import { Pressable } from "react-native";
 
 export default function GettingStarted() {
   const navigation = useNavigation();
-  const { setUser, setRider } = useContext(LoginContext);
+  const { setRole, setUserRole } = useContext(LoginContext);
   const [removeSplash, setRemoveSplash] = React.useState(false);
 
   React.useEffect(() => {
@@ -27,16 +27,17 @@ export default function GettingStarted() {
   }, []);
 
   function handleClick(index) {
-    if (index === 0) {
-      setRider("rider");
-      console.log("rider is picked");
-      navigation.navigate("OnboardRider1");
-    } else if (index === 1) {
-      setUser("user");
-      console.log("user is picked");
-      navigation.navigate("Onboard1");
-    }
+  if (index === 0) {
+    setUserRole("rider"); // Set role
+    console.log("Rider is picked");
+    navigation.navigate("OnboardRider1"); // Navigate to wallet connection page
+  } else if (index === 1) {
+    setUserRole("user"); // Set role
+    console.log("User is picked");
+    navigation.navigate("Onboard1"); // Navigate to wallet connection page
   }
+}
+
 
   return (
     <SafeAreaView style={styles.container}>
