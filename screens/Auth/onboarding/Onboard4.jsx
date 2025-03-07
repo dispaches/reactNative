@@ -14,7 +14,7 @@ import {
   createAppKit,
   AppKit,
 } from "@reown/appkit-wagmi-react-native";
-import { AppKitButton } from "@reown/appkit-wagmi-react-native";
+ import { AppKitButton, useAppKit } from "@reown/appkit-wagmi-react-native";
 import {
   StyleSheet,
   Text,
@@ -159,17 +159,15 @@ function Onboard4Screen() {
         <Text style={styles.title}>Choose your login method</Text>
         <Text style={styles.subtitle}>
           By connecting your wallet you agree to our{" "}
-          <Text style={{ color: "#0074D9" }}>Terms of Service</Text> and{" "}
-          <Text style={{ color: "#0074D9" }}>Privacy Policy</Text>
+          <Text style={{ color: "#0074D9", fontFamily: "Poppins-SemiBold", }}>Terms of Service</Text> and{" "}
+          <Text style={{ color: "#0074D9", fontFamily: "Poppins-SemiBold", }}>Privacy Policy</Text>
         </Text>
         <View style={{ alignItems: "center", padding: 10, margin: 10, }}>
           <AppKit />
-          <Pressable onClick={() => open()}>
-        <Text>Open Connect Modal</Text>
-      </Pressable>
+          <AppKitButton />
         </View>
         <View style={styles.navigation}>
-        <Text>
+        <Text style={{fontFamily: "Poppins-Regular",}}>
           Already have an account?{" "}
           <Text
             style={styles.span}
@@ -213,12 +211,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
     textAlign: "center",
+    fontFamily: "Poppins-SemiBold",
   },
   subtitle: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
     marginTop: 10,
+    fontFamily: "Poppins-Regular",
   },
   errorText: {
     color: "red",
@@ -232,6 +232,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 2,
     elevation: 5,
+    fontFamily: "Poppins-Regular",
   },
   connectButton: {
     backgroundColor: "#0074D9",
@@ -248,6 +249,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+    fontFamily: "Poppins-SemiBold",
   },
   navigation: {
     marginTop: 24,
@@ -256,5 +258,6 @@ const styles = StyleSheet.create({
   span: {
     color: "#0074D9",
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
 });

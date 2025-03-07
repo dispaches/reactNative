@@ -166,7 +166,7 @@ function Login() {
           <AppKitButton label="Sign Up" size="md" />
         </View>
         <View style={styles.navigation}>
-        <Text>
+        <Text style={{fontFamily: "Poppins-Regular",}}>
           Create an account?{" "}
           <Text
             style={styles.span}
@@ -204,18 +204,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 20,
     padding: 24,
+    fontFamily: "Poppins-Regular",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#333",
     textAlign: "center",
+    fontFamily: "Poppins-SemiBold",
   },
   subtitle: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
     marginTop: 10,
+    fontFamily: "Poppins-Regular",
   },
   errorText: {
     color: "red",
@@ -229,6 +232,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 2,
     elevation: 5,
+    fontFamily: "Poppins-Regular",
   },
   connectButton: {
     backgroundColor: "#0074D9",
@@ -253,5 +257,6 @@ const styles = StyleSheet.create({
   span: {
     color: "#0074D9",
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
 });

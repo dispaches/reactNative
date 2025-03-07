@@ -155,11 +155,13 @@ const styles = StyleSheet.create({
     color: "#333333",
     fontSize: 24,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   subHeading: {
     color: "#666666",
     fontSize: 16,
     fontWeight: "400",
+    fontFamily: "Poppins-Regular",
   },
   formContainer: {
     width: "100%",
@@ -179,6 +181,7 @@ const styles = StyleSheet.create({
     height: 48,
     width: "48%",
     borderWidth: 1,
+    fontFamily: "Poppins-Regular",
   },
   phoneInputContainer: {
     flexDirection: "row",
@@ -233,6 +236,7 @@ const styles = StyleSheet.create({
   },
   checkboxText: {
     color: "#666666",
+    fontFamily: "Poppins-Regular",
   },
   button: {
     backgroundColor: "#FF851B",
@@ -254,6 +258,7 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
     fontWeight: "bold",
     color: "#0074D9",
+    fontFamily: "Poppins-SemiBold",
   },
   privacy: {
     flexDirection: "row",
@@ -287,6 +292,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     fontSize: 16,
     color: "#666",
+    fontFamily: "Poppins-Regular",
   },
 
   inputContainers: {

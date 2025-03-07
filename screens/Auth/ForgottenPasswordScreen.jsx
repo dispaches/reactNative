@@ -78,11 +78,13 @@ import {
       color: "#333",
       fontSize: 24,
       fontWeight: "600",
+      fontFamily: "Poppins-SemiBold",
     },
     subHeading: {
       color: "#666",
       fontSize: 16,
       marginTop: 5,
+      fontFamily: "Poppins-Regular",
     },
     formContainer: {
       marginTop: 30,
@@ -104,6 +106,7 @@ import {
     input: {
       flex: 1,
       paddingVertical: 10,
+      fontFamily: "Poppins-Regular",
     },
     button: {
       backgroundColor: "#FF851B",
@@ -116,6 +119,7 @@ import {
       color: "#fff",
       fontSize: 16,
       fontWeight: "600",
+      fontFamily: "Poppins-Regular",
     },
     backButton: {
       flexDirection: "row",
@@ -127,5 +131,6 @@ import {
       color: "#0074D9",
       fontSize: 16,
       marginLeft: 5,
+      fontFamily: "Poppins-Regular",
     },
   });

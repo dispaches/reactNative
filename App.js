@@ -17,7 +17,7 @@ import OnboardRider3 from './screens/rider/OnboardRider3';
 import { LoginProvider } from "./authContext/LoginContext";
 import Login from "./screens/Auth/onboarding/Login";
 import UserDashboard from "./screens/user/UserDashboard";
-
+import { useFonts } from "expo-font";
 export const LoginContext = createContext();
 
 const Stack = createNativeStackNavigator();
@@ -33,11 +33,19 @@ export default function App() {
     }
     originalConsoleError(...args); // Keep other errors
   };
-  
+  const [fontsLoaded] = useFonts({
+    "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
+    "Poppins-SemiBold": require("./assets/fonts/Poppins-SemiBold.ttf"),
+  });
+
+  if (!fontsLoaded) {
+    return null; 
+  }
+
   return (
     <LoginProvider value={{ userRole, setUserRole  }}>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="UserDashboard">
+        <Stack.Navigator initialRouteName="Splash1">
           <Stack.Screen name="Splash1" component={Splash1} options={{ headerShown: false }} />
           <Stack.Screen name="Splash2" component={Splash2} options={{ headerShown: false }} />
           <Stack.Screen name="GettingStarted" component={GettingStarted} options={{ headerShown: false }} />

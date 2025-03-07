@@ -111,11 +111,13 @@ import {
       color: "#333",
       fontSize: 24,
       fontWeight: "600",
+      fontFamily: "Poppins-SemiBold",
     },
     subHeading: {
       color: "#666",
       fontSize: 16,
       marginTop: 5,
+      fontFamily: "Poppins-Regular",
     },
     formContainer: {
       marginTop: 30,
@@ -126,6 +128,7 @@ import {
       padding: 12,
       height: 48,
       marginBottom: 12,
+      fontFamily: "Poppins-Regular",
     },
     passwordInputContainer: {
       flexDirection: "row",
@@ -145,6 +148,7 @@ import {
       color: "#0074D9",
       textAlign: "right",
       marginVertical: 10,
+      fontFamily: "Poppins-Regular",
     },
     button: {
       backgroundColor: "#FF851B",
@@ -156,6 +160,7 @@ import {
     buttonText: {
       color: "#f2f2f2",
       fontSize: 16,
+      fontFamily: "Poppins-Regular",
     },
     socialLogin: {
       alignItems: "center",
@@ -175,6 +180,7 @@ import {
       marginHorizontal: 10,
       fontSize: 16,
       color: "#666",
+      fontFamily: "Poppins-Regular",
     },
     inputContainers: {
       flexDirection: "row",

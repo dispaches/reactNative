@@ -71,7 +71,7 @@ export default function GettingStarted() {
       ))}
 
       <View style={styles.navigation}>
-        <Text>
+        <Text style={{fontFamily: "Poppins-Regular",}}>
           Already have an account?{" "}
           <Text
             style={styles.span}
@@ -100,12 +100,14 @@ const styles = StyleSheet.create({
     color: "#333333",
     fontSize: 24,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   subHeading: {
     color: "#666666",
     fontSize: 16,
     fontWeight: "400",
     marginTop: 5,
+    fontFamily: "Poppins-Regular",
   },
   rider: {
     flexDirection: "row",
@@ -140,17 +142,20 @@ const styles = StyleSheet.create({
     color: "#FF851B",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   roleUser: {
     color: "#0074D9",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
   subRole: {
     color: "#666666",
     fontSize: 14,
     fontWeight: "400",
     marginTop: 5,
+    fontFamily: "Poppins-Regular",
   },
   navigation: {
     marginTop: 24,
@@ -159,5 +164,6 @@ const styles = StyleSheet.create({
   span: {
     color: "#0074D9",
     fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
   },
 });

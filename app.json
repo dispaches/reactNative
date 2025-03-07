@@ -23,6 +23,9 @@
     },
     "web": {
       "favicon": "./assets/dispatch1.png"
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

@@ -75,12 +75,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
     textAlign: "center",
+    fontFamily: "Poppins-SemiBold",
   },
   subtitle: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
     marginTop: 10,
+    fontFamily: "Poppins-Regular",
   },
   buttonContainer: {
     flexDirection: "row",
@@ -111,8 +113,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginHorizontal: 10,
     gap: 12,
+    fontFamily: "Poppins-Regular",
   },
   buttonSecondaryText: {
     color: "#0074D9",
+    fontFamily: "Poppins-Regular",
   },
 });
