@@ -1,5 +1,5 @@
 import "@walletconnect/react-native-compat";
-import { WagmiProvider, useAccount } from "wagmi";
+import { WagmiProvider, useAccount, useContractRead } from "wagmi";
 import {
   mainnet,
   sepolia,
@@ -14,7 +14,7 @@ import {
   createAppKit,
   AppKit,
 } from "@reown/appkit-wagmi-react-native";
-import { AppKitButton } from "@reown/appkit-wagmi-react-native";
+import { AppKitButton, useAppKit } from "@reown/appkit-wagmi-react-native";
 import {
   StyleSheet,
   Text,
@@ -23,22 +23,24 @@ import {
   Image,
   ImageBackground,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import trackImage from "../../../assets/login.png";
 import background from "../../../assets/rectangle4.png";
-import { useNavigation, useNavigationState } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { useContext, useEffect, useState } from "react";
 import { LoginContext } from "../../../authContext/LoginContext";
+import { contractConfig } from "../../../contract/contractConfig";
 
 // Query client for React Query
 const queryClient = new QueryClient();
 const projectId = "a1ac3f9aafd617a3705c88053470876e";
 
-// Metadata for AppKit
+// Blockchain metadata
 const metadata = {
-  name: "AppKit RN",
-  description: "AppKit RN Example",
-  url: "https://reown.com/appkit",
+  name: "Dispatches",
+  description: "Decentralized Logistics Platform",
+  url: "https://dispatches.com",
   icons: ["https://avatars.githubusercontent.com/u/179229932"],
   redirect: {
     native: "YOUR_APP_SCHEME://",
@@ -46,7 +48,7 @@ const metadata = {
   },
 };
 
-// Blockchain chains setup
+// Blockchain setup
 const chains = [mainnet, sepolia, arbitrum, base, scroll, polygon];
 const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
 
@@ -65,54 +67,33 @@ createAppKit({
   themeMode: "light",
 });
 
-// Suppress WalletConnect error messages
-// const originalConsoleError = console.error;
-// console.error = (...args) => {
-//   if (
-//     typeof args[0] === "string" &&
-//     args[0].includes("Couldn't establish socket connection")
-//   ) {
-//     return; // Ignore WalletConnect errors
-//   }
-//   originalConsoleError(...args); // Keep other errors
-// };
 
-// Main Onboarding Component
-export default function Onboard4() {
+export default function Login() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <Onboard4Screen />
+        <LoginScreen />
       </QueryClientProvider>
     </WagmiProvider>
   );
 }
 
-// Onboarding Screen Component
-function Login() {
-  const { userRole } = useContext(LoginContext);
-
-  useEffect(() => {
-    console.log("User Role in Onboard4:", userRole); // Log the role in Onboard4
-  }, [userRole]);
-
-  const { isConnected, error } = useAccount(); // Get wallet connection status
+function LoginScreen() {
   const navigation = useNavigation();
-  const [redirecting, setRedirecting] = useState(false);
+  const { setUserRole } = useContext(LoginContext);
+  const { open } = useAppKit();
+  const { isConnected, address } = useAccount();
+  const [isLoading, setIsLoading] = useState(false);
   const [customError, setCustomError] = useState("");
 
-  wagmiConfig.connectors.forEach((connector) => {
-    if (connector.provider) {
-      connector.provider.on("error", (err) => {
-        console.log("Suppressing WalletConnect Error:", err); // Prevents it from showing in logs
-        setCustomError("Wallet connection failed. Try again.");
-        setTimeout(() => {
-          setCustomError("");
-        }, 3000); // Clear error message after 3 seconds
-      });
-    }
+  // **Fetch User Role from Blockchain**
+  const { data: userRole, isLoading: isFetchingRole } = useContractRead({
+    ...contractConfig,
+    functionName: "getUser",
+    args: [address],
   });
 
+  // **Handle Wallet Connection Errors**
   useEffect(() => {
     if (!isConnected) {
       setCustomError(
@@ -122,30 +103,27 @@ function Login() {
         "Wallet Connection Error",
         "Couldn't connect to WalletConnect relay server. Try again later."
       );
-      setTimeout(() => {
-        setCustomError("");
-      }, 3000); // Clear error message after 3 seconds
+      setTimeout(() => setCustomError(""), 3000);
     }
   }, [isConnected]);
 
+  // **Redirect User Based on Role**
   useEffect(() => {
-    console.log("User Role in Onboard4:", userRole);
-  }, [userRole]);
-
-  useEffect(() => {
-    if (isConnected && !redirecting) {
-      setRedirecting(true); // Prevent multiple redirects
-      console.log("Wallet Connected! Redirecting...");
+    if (isConnected && userRole !== undefined) {
+      setIsLoading(true);
+      setUserRole(userRole);
+      console.log("✅ Fetched User Role:", userRole);
 
       setTimeout(() => {
-        if (userRole === "rider") {
-          navigation.navigate("RiderDashboard");
-        } else if (userRole === "user") {
-          navigation.navigate("UserDashboard");
+        setIsLoading(false);
+        if (userRole === 1) {
+          navigation.replace("RiderDashboard");
+        } else {
+          navigation.replace("UserDashboard");
         }
-      }, 500); // Small delay for smoother transition
+      }, 1000);
     }
-  }, [isConnected, userRole, navigation, redirecting]);
+  }, [isConnected, userRole, navigation, setUserRole]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -154,34 +132,48 @@ function Login() {
       <ImageBackground source={background} style={styles.containerImage}>
         <Image source={trackImage} style={styles.image} />
       </ImageBackground>
+
       <View style={styles.textContainer}>
-        <Text style={styles.title}>Choose your login method</Text>
+        <Text style={styles.title}>Sign In to Your Account</Text>
         <Text style={styles.subtitle}>
           By connecting your wallet you agree to our{" "}
-          <Text style={{ color: "#0074D9" }}>Terms of Service</Text> and{" "}
-          <Text style={{ color: "#0074D9" }}>Privacy Policy</Text>
-        </Text>
-        <View style={{ alignItems: "center", padding: 10, margin: 10, }}>
-          <AppKit />
-          <AppKitButton label="Sign Up" size="md" />
-        </View>
-        <View style={styles.navigation}>
-        <Text style={{fontFamily: "Poppins-Regular",}}>
-          Create an account?{" "}
-          <Text
-            style={styles.span}
-            onPress={() => navigation.navigate("Onboard4")}
-          >
-            Sign in
-          </Text>
+          <Text style={styles.linkText}>Terms of Service</Text> and{" "}
+          <Text style={styles.linkText}>Privacy Policy</Text>.
         </Text>
       </View>
+
+      {/* **Wallet Connection Section** */}
+      <View style={styles.walletContainer}>
+        {isLoading || isFetchingRole ? (
+          <ActivityIndicator size="large" color="#0074D9" />
+        ) : (
+          <>
+            <AppKit />
+            <AppKitButton
+              label="Sign In with Wallet"
+              size="md"
+              onPress={open}
+            />
+          </>
+        )}
+      </View>
+
+      <View style={styles.navigation}>
+        <Text style={styles.subtitle}>
+          Don't have an account?{" "}
+          <Text
+            style={styles.linkText}
+            onPress={() => navigation.navigate("GettingStarted")}
+          >
+            Sign Up
+          </Text>
+        </Text>
       </View>
     </SafeAreaView>
   );
 }
 
-// Styles
+// **Styles**
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -200,12 +192,7 @@ const styles = StyleSheet.create({
     alignContent: "center",
     justifyContent: "center",
   },
-  textContainer: {
-    alignItems: "center",
-    marginVertical: 20,
-    padding: 24,
-    fontFamily: "Poppins-Regular",
-  },
+  textContainer: { alignItems: "center", marginVertical: 20, padding: 24 },
   title: {
     fontSize: 24,
     fontWeight: "bold",
@@ -220,6 +207,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontFamily: "Poppins-Regular",
   },
+  linkText: {
+    color: "#0074D9",
+    fontWeight: "600",
+    fontFamily: "Poppins-SemiBold",
+  },
   errorText: {
     color: "red",
     textAlign: "center",
@@ -227,36 +219,7 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "#ffe6e6",
     borderRadius: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 5,
-    fontFamily: "Poppins-Regular",
   },
-  connectButton: {
-    backgroundColor: "#0074D9",
-    borderRadius: 5,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 5,
-  },
-  connectButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  navigation: {
-    marginTop: 24,
-    alignItems: "center",
-  },
-  span: {
-    color: "#0074D9",
-    fontWeight: "600",
-    fontFamily: "Poppins-SemiBold",
-  },
+  walletContainer: { alignItems: "center", padding: 10, margin: 10 },
+  navigation: { marginTop: 24, alignItems: "center" },
 });

@@ -17,7 +17,11 @@ import OnboardRider3 from './screens/rider/OnboardRider3';
 import { LoginProvider } from "./authContext/LoginContext";
 import Login from "./screens/Auth/onboarding/Login";
 import UserDashboard from "./screens/user/UserDashboard";
+import InstantDelivery from "./screens/user/InstantDelivery";
+import ScheduleDelivery from "./screens/user/ScheduleDelivery";
 import { useFonts } from "expo-font";
+import { WalletProvider } from './walletContext/WalletContext';
+import { WagmiProvider } from "wagmi";
 export const LoginContext = createContext();
 
 const Stack = createNativeStackNavigator();
@@ -26,13 +30,13 @@ export default function App() {
   const [userRole, setUserRole ] = useState(null);
   
   
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    if (typeof args[0] === "string" && args[0].includes("Couldn't establish socket connection")) {
-      return; // Ignore WalletConnect errors
-    }
-    originalConsoleError(...args); // Keep other errors
-  };
+  // const originalConsoleError = console.error;
+  // console.error = (...args) => {
+  //   if (typeof args[0] === "string" && args[0].includes("Couldn't establish socket connection")) {
+  //     return; // Ignore WalletConnect errors
+  //   }
+  //   originalConsoleError(...args); // Keep other errors
+  // };
   const [fontsLoaded] = useFonts({
     "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
     "Poppins-SemiBold": require("./assets/fonts/Poppins-SemiBold.ttf"),
@@ -43,7 +47,9 @@ export default function App() {
   }
 
   return (
-    <LoginProvider value={{ userRole, setUserRole  }}>
+    
+    <LoginProvider value={{ userRole, setUserRole }}>
+      <WalletProvider>
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Splash1">
           <Stack.Screen name="Splash1" component={Splash1} options={{ headerShown: false }} />
@@ -60,9 +66,12 @@ export default function App() {
           <Stack.Screen name="OnboardRider2" component={OnboardRider2} options={{ headerShown: false }} />
           <Stack.Screen name="OnboardRider3" component={OnboardRider3} options={{ headerShown: false }} />
           <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
-          <Stack.Screen name="UserDashboard" component={UserDashboard} options={{ headerShown: false }} />
+            <Stack.Screen name="UserDashboard" component={UserDashboard} options={{ headerShown: false }} />
+            <Stack.Screen name="InstantDelivery" component={InstantDelivery} options={{ headerShown: false }} />
+            <Stack.Screen name="ScheduleDelivery" component={ScheduleDelivery} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
+      </WalletProvider>
     </LoginProvider>
   );
 }

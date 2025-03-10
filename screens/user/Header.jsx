@@ -1,20 +1,27 @@
 import React, { useState, useRef } from "react";
+
 import {
   StyleSheet,
   View,
   TouchableOpacity,
   Text,
   Animated,
-    Dimensions,
+  Dimensions,
   SafeAreaView,
+  Clipboard,
+  Alert,
 } from "react-native";
-import Icon from "react-native-vector-icons/MaterialIcons";
 
+import Icon from "react-native-vector-icons/MaterialIcons";
+import { WalletContext } from "../../walletContext/WalletContext";
+import { useContext, useEffect } from "react";
 const { width, height } = Dimensions.get("window");
-const MENU_WIDTH = (2 / 3) * width; // Now 2/3 of the screen width
+const MENU_WIDTH = (2 / 3) * width; // 2/3 of the screen width
 
 export default function Header() {
+  const { walletAddress, balance } = useContext(WalletContext);
   const [showMenu, setShowMenu] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState("Home"); // Track active menu item
   const slideAnim = useRef(new Animated.Value(-MENU_WIDTH)).current;
 
   const toggleSideMenu = () => {
@@ -32,6 +39,16 @@ export default function Header() {
         useNativeDriver: true,
       }).start();
     }
+  };
+  const shortenAddress = (walletAddress) => {
+    return walletAddress
+      ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+      : "";
+  };
+
+  const copyToClipboard = (walletAddress) => {
+    Clipboard.setString(walletAddress);
+    Alert.alert("Copied!", "Wallet address copied to clipboard.");
   };
 
   return (
@@ -60,7 +77,7 @@ export default function Header() {
         <Animated.View
           style={[styles.sideMenu, { transform: [{ translateX: slideAnim }] }]}
         >
-          {/* Close Button Inside Menu */}
+          {/* Close Button */}
           <TouchableOpacity onPress={toggleSideMenu} style={styles.closeButton}>
             <Icon name="close" size={30} color="#333" />
           </TouchableOpacity>
@@ -72,27 +89,40 @@ export default function Header() {
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.name}>Davidson Edgar</Text>
-              <Text style={styles.address}>0x841a...8a57</Text>
+
+              <Text
+                style={styles.address}
+                onPress={() => copyToClipboard(walletAddress)}
+              >
+                {" "}
+                {shortenAddress(walletAddress)}
+              </Text>
             </View>
           </View>
 
           {/* Menu Items */}
           <View style={styles.menuItems}>
-            <TouchableOpacity>
-              <Text style={styles.menuText}> Home</Text>
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Text style={styles.menuText}> Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Text style={styles.menuText}> Orders</Text>
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Text style={styles.menuText}> Settings</Text>
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Text style={styles.menuText}> Logout</Text>
-            </TouchableOpacity>
+            {["Home", "Profile", "Notifications", "Settings", "Support"].map(
+              (item) => (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => setSelectedMenuItem(item)}
+                  style={[
+                    styles.menuItem,
+                    selectedMenuItem === item && styles.activeMenuItem, // Apply active style
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.menuText,
+                      selectedMenuItem === item && styles.activeMenuText, // Change text color for active item
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
           </View>
         </Animated.View>
       </View>
@@ -118,9 +148,9 @@ const styles = StyleSheet.create({
   },
   logo: {
     fontSize: 20,
-    fontWeight: "24",
-      color: "#333",
-      fontFamily: "Poppins-SemiBold",
+    fontWeight: "600",
+    color: "#333",
+    fontFamily: "Poppins-SemiBold",
   },
   overlay: {
     position: "absolute",
@@ -128,7 +158,6 @@ const styles = StyleSheet.create({
     left: 0,
     width: "100%",
     height: "100%",
-
     zIndex: 50,
   },
   sideMenu: {
@@ -146,12 +175,12 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 10,
     zIndex: 100,
+    alignItems: "center",
   },
   closeButton: {
     position: "absolute",
     top: 15,
     right: 15,
-
     borderRadius: 15,
     padding: 5,
   },
@@ -189,10 +218,22 @@ const styles = StyleSheet.create({
   },
   menuItems: {
     marginTop: 20,
+    width: "100%",
+  },
+  menuItem: {
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    marginBottom: 12,
   },
   menuText: {
     fontSize: 18,
-    color: "#007AFF",
-    paddingVertical: 10,
+    color: "#003366",
+  },
+  activeMenuItem: {
+    backgroundColor: "#007AFF", // Highlight background when active
+  },
+  activeMenuText: {
+    color: "#fff", // Change text color when active
   },
 });
