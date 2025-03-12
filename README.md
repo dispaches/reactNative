@@ -128,7 +128,7 @@ npx expo start
 
 ## 📞 Contact & Contributions
 💡 Found an issue? **Open a pull request** or **report a bug**!
-📩 Email: `your@email.com`
+📩 Email: `covenantekundayo@gmail.com `
 🐙 GitHub: [Dispatches Repository](https://github.com/dispaches/reactNative.git)
 🔗 Scroll Sepolia Explorer: [View Contract](https://sepolia.scrollscan.com/address/0xD5d1f49dACf70b30f27d363BF2cE66A464b2b5e3)
 
