@@ -89,16 +89,14 @@ export default function Onboard4() {
 function Onboard4Screen() {
   const navigation = useNavigation();
   const { isConnected, address } = useAccount();
-  const { userRole } = useContext(LoginContext); // ✅ Get user role from context
+  const { userRole } = useContext(LoginContext); 
   const { setWalletAddress, setBalance } = useContext(WalletContext);
   const { open } = useAppKit();
   const [loading, setLoading] = useState(false);
   const [customError, setCustomError] = useState("");
 
-  // ✅ Fetch Wallet Balance
   const { data: balanceData } = useBalance({ address });
 
-  // ✅ Function to Register User Role
   const { writeContract } = useWriteContract();
 
   async function storeUserRole(role) {
@@ -205,7 +203,6 @@ function Onboard4Screen() {
   );
 }
 
-// ✅ Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,

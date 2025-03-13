@@ -1,11 +1,25 @@
-import React, { useEffect, useState } from "react";
+import "@walletconnect/react-native-compat";
+import { WagmiProvider, useAccount, useWriteContract } from "wagmi";
+import {
+  mainnet,
+  sepolia,
+  arbitrum,
+  base,
+  scroll,
+  polygon,
+} from "@wagmi/core/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  defaultWagmiConfig,
+  createAppKit,
+} from "@reown/appkit-wagmi-react-native";
+
+import React, { useEffect, useState, useContext } from "react";
 import {
   StyleSheet,
   Text,
   View,
   SafeAreaView,
-  ActivityIndicator,
-  Dimensions,
   TouchableOpacity,
   Alert,
   TextInput,
@@ -14,76 +28,294 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
-import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
 import bike from "../../assets/delivery/bike.png";
 import car from "../../assets/delivery/car.png";
 import van from "../../assets/delivery/van.png";
 import locationIcon from "../../assets/delivery/location.png";
 import dropoffIcon from "../../assets/delivery/dropofflocation.png";
+import { useNavigation } from "@react-navigation/native";
+import { contractConfig } from "../../contract/contractConfig";
+import { WalletContext } from "../../walletContext/WalletContext";
+import CryptoJS from "crypto-js/core";
+import "crypto-js/sha256";
+import "crypto-js/hmac-sha256";
+import "crypto-js/enc-base64";
+import moment from "moment";
+import { Buffer } from "buffer";
+import uuid from "react-native-uuid";
+// Query client
+const queryClient = new QueryClient();
+const projectId = "a1ac3f9aafd617a3705c88053470876e";
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
+// Blockchain metadata
+const metadata = {
+  name: "Dispatches",
+  description: "Decentralized Logistics Platform",
+  url: "https://dispatches.com",
+  icons: ["https://avatars.githubusercontent.com/u/179229932"],
+  redirect: {
+    native: "YOUR_APP_SCHEME://",
+    universal: "YOUR_APP_UNIVERSAL_LINK.com",
+  },
+};
 
+// Blockchain setup
+const chains = [mainnet, sepolia, arbitrum, base, scroll, polygon];
+const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
+
+// Initialize AppKit
+createAppKit({
+  projectId,
+  wagmiConfig,
+  defaultChain: mainnet,
+  enableAnalytics: true,
+  features: {
+    analytics: true,
+    email: true,
+    socials: ["Google", "X", "github", "discord", "farcaster"],
+    emailShowWallets: true,
+  },
+  themeMode: "light",
+});
+
+// ✅ Main Component
 export default function InstantDelivery() {
-    const navigation = useNavigation();
-    const [location, setLocation] = useState(null);
-    const [pickupAddress, setPickupAddress] = useState("");
-    const [destination, setDestination] = useState(null);
-    const [deliveryLocation, setDeliveryLocation] = useState("");
-    const [selectedVehicle, setSelectedVehicle] = useState(null);
-    const [loading, setLoading] = useState(true);
-  
-    // Get user's current location & address
-    useEffect(() => {
-      (async () => {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Location Permission Denied", "Enable location services to use the map.");
-          setLoading(false);
-          return;
-        }
-  
-        const locationWatcher = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            timeInterval: 5000,
-            distanceInterval: 10,
-          },
-          async (newLocation) => {
-            setLocation(newLocation.coords);
-            await getAddressFromCoordinates(newLocation.coords.latitude, newLocation.coords.longitude);
-            setLoading(false);
-          }
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <InstantDeliveryScreen />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+function InstantDeliveryScreen() {
+  const { address, isConnected } = useAccount();
+  const { writeContract } = useWriteContract();
+  const [location, setLocation] = useState(null);
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [destination, setDestination] = useState(null);
+  const [deliveryLocation, setDeliveryLocation] = useState("");
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const navigation = useNavigation();
+  const { walletAddress } = useContext(WalletContext);
+
+  useEffect(() => {
+    console.log("Wallet Address in InstantDelivery:", walletAddress);
+  }, [walletAddress]);
+
+  // ✅ Get User's Location
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Location Permission Denied", "Enable location services.");
+        return;
+      }
+
+      const { coords } = await Location.getCurrentPositionAsync({});
+      setLocation(coords);
+      await getAddressFromCoordinates(coords.latitude, coords.longitude);
+    })();
+  }, []);
+
+  // ✅ Convert Coordinates to Address
+  async function getAddressFromCoordinates(lat, lng) {
+    try {
+      let addressResponse = await Location.reverseGeocodeAsync({
+        latitude: lat,
+        longitude: lng,
+      });
+      if (addressResponse.length > 0) {
+        let formattedAddress = `${addressResponse[0].name}, ${addressResponse[0].city}`;
+        setPickupAddress(formattedAddress);
+      }
+    } catch (error) {
+      console.error("Error getting address:", error);
+    }
+  }
+
+  async function handleSetDestination(address) {
+    setDeliveryLocation(address);
+    if (!address) return setDestination(null);
+
+    try {
+      const apiKey = "0cec6571e6554f59a287aca515413f70";
+      const response = await fetch(
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+          address
+        )}&key=${apiKey}`
+      );
+
+      const data = await response.json();
+
+      if (data.results.length > 0) {
+        const { lat, lng } = data.results[0].geometry;
+        setDestination({
+          latitude: lat,
+          longitude: lng,
+        });
+      } else {
+        Alert.alert(
+          "Invalid Address",
+          "Could not find the location. Try another address."
         );
+      }
+    } catch (error) {
+      console.error("Geocoding Error:", error);
+      Alert.alert(
+        "Error",
+        "Failed to fetch location. Check network or API response."
+      );
+    }
+  }
+
+  function handleVehicleSelection(type) {
+    setSelectedVehicle(type);
+  }
+  function calculatePrice(vehicleType) {
+    const basePrice = 5; // Base delivery fee
+    const vehiclePrices = {
+      bike: 10,
+      car: 20,
+      van: 30,
+    };
+    return basePrice + (vehiclePrices[vehicleType] || 0);
+  }
+  const FILEBASE_ACCESS_KEY = "BDD6B8DDA41DEA00FFBA";
+  const FILEBASE_SECRET_KEY = "fCaNSVdlFNIO4MPuTsjBcDdSYRT1HQcTGW0qxC5K";
+  const FILEBASE_BUCKET_NAME = "dispatches-storage";
+
+  async function uploadToFilebase(data) {
+    try {
+      const region = "us-east-1";  // Filebase uses AWS S3 (us-east-1)
+      const service = "s3";
+      const host = `${FILEBASE_BUCKET_NAME}.s3.filebase.com`;
   
-        return () => locationWatcher.remove();
-      })();
-    }, []);
+      let fileUrl;
+      let fileExists = true;
+      let attempts = 0;
   
-    // Convert coordinates to a human-readable address
-    async function getAddressFromCoordinates(lat, lng) {
-      try {
-        let addressResponse = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-        if (addressResponse.length > 0) {
-          let formattedAddress = `${addressResponse[0].name}, ${addressResponse[0].city}, ${addressResponse[0].region}`;
-          setPickupAddress(formattedAddress);
+      while (fileExists && attempts < 5) {
+        const fileId = uuid.v4();
+        const endpoint = `https://${host}/${fileId}.json`; // 📂 File will be stored as "delivery.json"
+  
+        // Convert JSON data into a Blob
+        const payload = JSON.stringify(data);
+        const payloadHash = CryptoJS.SHA256(payload).toString(CryptoJS.enc.Hex);
+  
+        // Generate date/time for signature
+        const date = moment().utc().format("YYYYMMDD");
+        const timestamp = moment().utc().format("YYYYMMDDTHHmmss") + "Z";
+        const credentialScope = `${date}/${region}/${service}/aws4_request`;
+  
+        // Create canonical request
+        const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timestamp}\n`;
+        const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+        const canonicalRequest = `PUT\n/${fileId}.json\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  
+        // Generate the string to sign
+        const stringToSign = `AWS4-HMAC-SHA256\n${timestamp}\n${credentialScope}\n${CryptoJS.SHA256(canonicalRequest).toString(CryptoJS.enc.Hex)}`;
+  
+        // Generate signing key
+        function getSignatureKey(key, dateStamp, regionName, serviceName) {
+          const kDate = CryptoJS.HmacSHA256(dateStamp, "AWS4" + key);
+          const kRegion = CryptoJS.HmacSHA256(regionName, kDate);
+          const kService = CryptoJS.HmacSHA256(serviceName, kRegion);
+          const kSigning = CryptoJS.HmacSHA256("aws4_request", kService);
+          return kSigning;
         }
-      } catch (error) {
-        console.error("Error getting address:", error);
+        const signingKey = getSignatureKey(FILEBASE_SECRET_KEY, date, region, service);
+        const signature = CryptoJS.HmacSHA256(stringToSign, signingKey).toString(CryptoJS.enc.Hex);
+  
+        // Construct authorization header
+        const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${FILEBASE_ACCESS_KEY}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  
+        // Send request to Filebase S3 API
+        try {
+          const response = await axios.put(endpoint, payload, {
+            headers: {
+              "Content-Type": "application/json",
+              "x-amz-content-sha256": payloadHash,
+              "x-amz-date": timestamp,
+              Authorization: authorizationHeader,
+            },
+          });
+  
+          console.log("✅ File uploaded to Filebase:", response.config.url);
+          fileUrl = response.config.url; // Return the URL of the uploaded file
+          fileExists = false;
+        } catch (error) {
+          if (error.response && error.response.status === 409) {
+            // File already exists, generate a new UUID and try again
+            attempts++;
+          } else {
+            throw error;
+          }
+        }
       }
-    }
   
-    function handleSetDestination(text) {
-      setDeliveryLocation(text);
-      if (text) {
-        setDestination({ latitude: location.latitude + 0.01, longitude: location.longitude + 0.01 });
+      if (fileExists) {
+        throw new Error("Failed to upload file after multiple attempts.");
       }
+  
+      return fileUrl;
+    } catch (error) {
+      console.error("❌ Filebase Upload Failed:", error.response ? error.response.data : error.message);
+      Alert.alert("Filebase Upload Failed", "Check your API credentials & internet connection.");
+      return null;
     }
-  
-    function handleVehicleSelection(type) {
-      setSelectedVehicle(type);
+  }
+  async function handleSubmit() {
+    if (!address) {
+      return Alert.alert(
+        "Wallet Not Connected",
+        "Please connect your wallet first."
+      );
     }
-  
-  
+
+    if (!pickupAddress || !deliveryLocation || !selectedVehicle) {
+      return Alert.alert("Missing Info", "Fill all fields before proceeding.");
+    }
+
+    setLoading(true);
+    const orderId = uuid.v4();
+    const deliveryData = {
+      orderId,
+      type: "instant",
+      pickup: pickupAddress,
+      dropoff: deliveryLocation,
+      vehicle: selectedVehicle,
+      walletAddress: address, // Include wallet address in the data
+      price: calculatePrice(selectedVehicle),
+    };
+
+    // ✅ Upload to Filebase
+    const filebaseUrl = await uploadToFilebase(deliveryData);
+    if (!filebaseUrl) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await writeContract({
+        ...contractConfig,
+        functionName: "registerOrder",
+        args: [filebaseUrl], // ✅ Store only the Filebase URL on the blockchain
+      });
+
+      setLoading(false);
+      Alert.alert("Success", `Order ${orderId} stored on blockchain!`);
+      navigation.navigate("DeliveryDetails");
+    } catch (error) {
+      setLoading(false);
+      console.error("Transaction Failed:", error);
+      Alert.alert("Transaction Failed", error.message);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Back Button */}
@@ -95,42 +327,31 @@ export default function InstantDelivery() {
       </TouchableOpacity>
 
       {/* Map View */}
-     {/* Map View */}
-     <View style={styles.mapContainer}>
-        {loading ? (
-          <ActivityIndicator size="large" color="#0074D9" style={styles.loader} />
-        ) : (
-          <MapView
-            style={StyleSheet.absoluteFillObject}
-            initialRegion={{
-              latitude: location?.latitude || 40.7128,
-              longitude: location?.longitude || -74.006,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }}
-            showsUserLocation={true}
-            followsUserLocation={true}
-          >
-            {/* Pickup Marker */}
-            {location && (
-              <Marker
-                coordinate={{ latitude: location.latitude, longitude: location.longitude }}
-                title="Pickup Location"
-                description={pickupAddress}
-              />
-            )}
-
-            {/* Delivery Marker */}
-            {destination && (
-              <Marker
-                coordinate={{ latitude: destination.latitude, longitude: destination.longitude }}
-                title="Drop-off Location"
-              />
-            )}
-          </MapView>
-        )}
+      <View style={styles.mapContainer}>
+        <MapView
+          style={StyleSheet.absoluteFillObject}
+          initialRegion={{
+            latitude: location?.latitude || 40.7128,
+            longitude: location?.longitude || -74.006,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
+          showsUserLocation={true}
+        >
+          {/* Pickup Marker */}
+          {location && (
+            <Marker
+              coordinate={location}
+              title="Pickup Location"
+              description={pickupAddress}
+            />
+          )}
+          {/* Delivery Marker */}
+          {destination && (
+            <Marker coordinate={destination} title="Drop-off Location" />
+          )}
+        </MapView>
       </View>
-
 
       {/* Info Section */}
       <View style={styles.infoBox}>
@@ -143,7 +364,7 @@ export default function InstantDelivery() {
             style={styles.input}
             placeholder="Pickup Location"
             value={pickupAddress}
-            onChangeText={setPickupAddress}
+            onChangeText={setPickupAddress} // Allows manual input
           />
         </View>
 
@@ -161,43 +382,32 @@ export default function InstantDelivery() {
         {/* Vehicle Type Selection */}
         <Text style={styles.vehicleTitle}>Vehicle Type</Text>
         <View style={styles.vehicleContainer}>
-          <TouchableOpacity
-            style={[
-              styles.vehicleButton,
-              selectedVehicle === "bike" && styles.selectedVehicle,
-            ]}
-            onPress={() => handleVehicleSelection("bike")}
-          >
-            <Image source={bike} style={styles.vehicleImage} />
-            {/* <Text style={styles.vehicleText}>Bike</Text> */}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.vehicleButton,
-              selectedVehicle === "car" && styles.selectedVehicle,
-            ]}
-            onPress={() => handleVehicleSelection("car")}
-          >
-            <Image source={car} style={styles.vehicleImage} />
-            {/* <Text style={styles.vehicleText}>Car</Text> */}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.vehicleButton,
-              selectedVehicle === "van" && styles.selectedVehicle,
-            ]}
-            onPress={() => handleVehicleSelection("van")}
-          >
-            <Image source={van} style={styles.vehicleImage} />
-            {/* <Text style={styles.vehicleText}>Van</Text> */}
-          </TouchableOpacity>
+          {["bike", "car", "van"].map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.vehicleButton,
+                selectedVehicle === type && styles.selectedVehicle,
+              ]}
+              onPress={() => handleVehicleSelection(type)}
+            >
+              <Image
+                source={type === "bike" ? bike : type === "car" ? car : van}
+                style={styles.vehicleImage}
+              />
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Next Button */}
-        <TouchableOpacity style={styles.nextButton}>
-          <Text style={styles.nextButtonText}>Next</Text>
+        {/* Next Button (Submit to Blockchain) */}
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={handleSubmit}
+          disabled={loading} // ✅ Use loading state instead
+        >
+          <Text style={styles.nextButtonText}>
+            {loading ? "Processing..." : "Submit & Proceed"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -234,7 +444,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     width: "100%",
-    height: 400,
+    height: 450,
     backgroundColor: "#f2f2f2",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -266,6 +476,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
     resizeMode: "contain",
   },
+  icons: {
+    marginRight: 8,
+    resizeMode: "contain",
+  },
   input: {
     flex: 1,
     height: 45,
@@ -273,7 +487,7 @@ const styles = StyleSheet.create({
   vehicleTitle: {
     fontSize: 14,
     fontFamily: "Poppins-Regular",
-      marginVertical: 10,
+    marginVertical: 10,
     color: "#666",
   },
   vehicleContainer: {
@@ -291,13 +505,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#cccccc",
     borderRadius: 10,
-
     width: 97,
     height: 81,
   },
   selectedVehicle: {
-      borderColor: "#0074D9",
-      backgroundColor: "#DCE4FF66",
+    borderColor: "#0074D9",
+    backgroundColor: "#DCE4FF66",
   },
   vehicleImage: {
     marginBottom: 5,
@@ -314,7 +527,22 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: "#F2F2F2",
-      fontSize: 14,
+    fontSize: 14,
     fontFamily: "Poppins-Regular",
   },
+  dateTimeContainer: {
+    flexDirection: "row",
+    justifyContent: "start",
+    gap: 14,
+  },
+  dateTimeInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    height: 51,
+  },
+  dateTimeText: { marginLeft: 8, fontSize: 16, color: "#333" },
 });

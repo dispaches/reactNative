@@ -1,0 +1,1 @@
+npm install --save-dev jest @testing-library/react-native @testing-library/jest-native

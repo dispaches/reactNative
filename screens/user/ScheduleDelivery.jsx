@@ -1,4 +1,20 @@
-import React, { useEffect, useState } from "react";
+import "@walletconnect/react-native-compat";
+import { WagmiProvider, useAccount, useWriteContract } from "wagmi";
+import {
+  mainnet,
+  sepolia,
+  arbitrum,
+  base,
+  scroll,
+  polygon,
+} from "@wagmi/core/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  defaultWagmiConfig,
+  createAppKit,
+} from "@reown/appkit-wagmi-react-native";
+import axios from "axios";
+import React, { useEffect, useState, useContext } from "react";
 import {
   StyleSheet,
   Text,
@@ -22,10 +38,62 @@ import car from "../../assets/delivery/car.png";
 import van from "../../assets/delivery/van.png";
 import locationIcon from "../../assets/delivery/location.png";
 import dropoffIcon from "../../assets/delivery/dropofflocation.png";
+import { contractConfig } from "../../contract/contractConfig";
+import { WalletContext } from "../../walletContext/WalletContext";
+import CryptoJS from "crypto-js/core";
+import "crypto-js/sha256";
+import "crypto-js/hmac-sha256";
+import "crypto-js/enc-base64";
+import moment from "moment";
+import { Buffer } from "buffer";
+import uuid from "react-native-uuid";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
+// Query client
+const queryClient = new QueryClient();
+const projectId = "a1ac3f9aafd617a3705c88053470876e";
 
+// Blockchain metadata
+const metadata = {
+  name: "Dispatches",
+  description: "Decentralized Logistics Platform",
+  url: "https://dispatches.com",
+  icons: ["https://avatars.githubusercontent.com/u/179229932"],
+  redirect: {
+    native: "YOUR_APP_SCHEME://",
+    universal: "YOUR_APP_UNIVERSAL_LINK.com",
+  },
+};
+
+// Blockchain setup
+const chains = [mainnet, sepolia, arbitrum, base, scroll, polygon];
+const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
+
+// Initialize AppKit
+createAppKit({
+  projectId,
+  wagmiConfig,
+  defaultChain: mainnet,
+  enableAnalytics: true,
+  features: {
+    analytics: true,
+    email: true,
+    socials: ["Google", "X", "github", "discord", "farcaster"],
+    emailShowWallets: true,
+  },
+  themeMode: "light",
+});
 export default function ScheduleDelivery() {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <ScheduleDeliveryScreen />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+function ScheduleDeliveryScreen() {
   const navigation = useNavigation();
   const [location, setLocation] = useState(null);
   const [pickupAddress, setPickupAddress] = useState("");
@@ -37,6 +105,13 @@ export default function ScheduleDelivery() {
   const [time, setTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const { walletAddress } = useContext(WalletContext);
+  const { address, isConnected } = useAccount();
+  const { writeContract } = useWriteContract();
+
+  useEffect(() => {
+    console.log("Wallet Address in Schedule Delivery:", walletAddress);
+  }, [walletAddress]);
 
   // Get user's current location & address
   useEffect(() => {
@@ -79,7 +154,7 @@ export default function ScheduleDelivery() {
         longitude: lng,
       });
       if (addressResponse.length > 0) {
-        let formattedAddress = `${addressResponse[0].name}, ${addressResponse[0].city}, ${addressResponse[0].region}`;
+        let formattedAddress = `${addressResponse[0].name}, ${addressResponse[0].city}`;
         setPickupAddress(formattedAddress);
       }
     } catch (error) {
@@ -87,20 +162,53 @@ export default function ScheduleDelivery() {
     }
   }
 
-  function handleSetDestination(text) {
-    setDeliveryLocation(text);
-    if (text) {
-      setDestination({
-        latitude: location.latitude + 0.01,
-        longitude: location.longitude + 0.01,
-      });
+  async function handleSetDestination(address) {
+    setDeliveryLocation(address);
+    if (!address) return setDestination(null);
+
+    try {
+      const apiKey = "0cec6571e6554f59a287aca515413f70";
+      const response = await fetch(
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+          address
+        )}&key=${apiKey}`
+      );
+
+      const data = await response.json();
+
+      if (data.results.length > 0) {
+        const { lat, lng } = data.results[0].geometry;
+        setDestination({
+          latitude: lat,
+          longitude: lng,
+        });
+      } else {
+        Alert.alert(
+          "Invalid Address",
+          "Could not find the location. Try another address."
+        );
+      }
+    } catch (error) {
+      console.error("Geocoding Error:", error);
+      Alert.alert(
+        "Error",
+        "Failed to fetch location. Check network or API response."
+      );
     }
   }
 
   function handleVehicleSelection(type) {
     setSelectedVehicle(type);
   }
-
+  function calculatePrice(vehicleType) {
+    const basePrice = 5; // Base delivery fee
+    const vehiclePrices = {
+      bike: 10,
+      car: 20,
+      van: 30,
+    };
+    return basePrice + (vehiclePrices[vehicleType] || 0);
+  }
   function handleDateChange(event, selectedDate) {
     if (selectedDate) {
       setDate(selectedDate);
@@ -114,6 +222,141 @@ export default function ScheduleDelivery() {
       setTime(selectedTime);
     }
     setShowTimePicker(false); // Close the picker
+  }
+  const FILEBASE_ACCESS_KEY = "BDD6B8DDA41DEA00FFBA";
+  const FILEBASE_SECRET_KEY = "fCaNSVdlFNIO4MPuTsjBcDdSYRT1HQcTGW0qxC5K";
+  const FILEBASE_BUCKET_NAME = "dispatches-storage";
+
+  async function uploadToFilebase(data) {
+    try {
+      const region = "us-east-1";  // Filebase uses AWS S3 (us-east-1)
+      const service = "s3";
+      const host = `${FILEBASE_BUCKET_NAME}.s3.filebase.com`;
+  
+      let fileUrl;
+      let fileExists = true;
+      let attempts = 0;
+  
+      while (fileExists && attempts < 5) {
+        const fileId = uuid.v4();
+        const endpoint = `https://${host}/${fileId}.json`; // 📂 File will be stored as "delivery.json"
+  
+        // Convert JSON data into a Blob
+        const payload = JSON.stringify(data);
+        const payloadHash = CryptoJS.SHA256(payload).toString(CryptoJS.enc.Hex);
+  
+        // Generate date/time for signature
+        const date = moment().utc().format("YYYYMMDD");
+        const timestamp = moment().utc().format("YYYYMMDDTHHmmss") + "Z";
+        const credentialScope = `${date}/${region}/${service}/aws4_request`;
+  
+        // Create canonical request
+        const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timestamp}\n`;
+        const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+        const canonicalRequest = `PUT\n/${fileId}.json\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  
+        // Generate the string to sign
+        const stringToSign = `AWS4-HMAC-SHA256\n${timestamp}\n${credentialScope}\n${CryptoJS.SHA256(canonicalRequest).toString(CryptoJS.enc.Hex)}`;
+  
+        // Generate signing key
+        function getSignatureKey(key, dateStamp, regionName, serviceName) {
+          const kDate = CryptoJS.HmacSHA256(dateStamp, "AWS4" + key);
+          const kRegion = CryptoJS.HmacSHA256(regionName, kDate);
+          const kService = CryptoJS.HmacSHA256(serviceName, kRegion);
+          const kSigning = CryptoJS.HmacSHA256("aws4_request", kService);
+          return kSigning;
+        }
+        const signingKey = getSignatureKey(FILEBASE_SECRET_KEY, date, region, service);
+        const signature = CryptoJS.HmacSHA256(stringToSign, signingKey).toString(CryptoJS.enc.Hex);
+  
+        // Construct authorization header
+        const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${FILEBASE_ACCESS_KEY}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  
+        // Send request to Filebase S3 API
+        try {
+          const response = await axios.put(endpoint, payload, {
+            headers: {
+              "Content-Type": "application/json",
+              "x-amz-content-sha256": payloadHash,
+              "x-amz-date": timestamp,
+              Authorization: authorizationHeader,
+            },
+          });
+  
+          console.log("✅ File uploaded to Filebase:", response.config.url);
+          fileUrl = response.config.url; // Return the URL of the uploaded file
+          fileExists = false;
+        } catch (error) {
+          if (error.response && error.response.status === 409) {
+            // File already exists, generate a new UUID and try again
+            attempts++;
+          } else {
+            throw error;
+          }
+        }
+      }
+  
+      if (fileExists) {
+        throw new Error("Failed to upload file after multiple attempts.");
+      }
+  
+      return fileUrl;
+    } catch (error) {
+      console.error("❌ Filebase Upload Failed:", error.response ? error.response.data : error.message);
+      Alert.alert("Filebase Upload Failed", "Check your API credentials & internet connection.");
+      return null;
+    }
+  }
+  async function handleSubmit() {
+    if (!address) {
+      return Alert.alert(
+        "Wallet Not Connected",
+        "Please connect your wallet first."
+      );
+    }
+
+    if (!pickupAddress || !deliveryLocation || !selectedVehicle || !date || !time) {
+      return Alert.alert("Missing Info", "Fill all fields before proceeding.");
+    }
+
+    setLoading(true);
+    const orderId = uuid.v4();
+    const deliveryData = {
+      orderId,
+      type: "scheduled",
+      pickup: pickupAddress,
+      dropoff: deliveryLocation,
+      vehicle: selectedVehicle,
+      walletAddress: address, 
+      price: calculatePrice(selectedVehicle),
+      date: date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
+      time: time.toTimeString().split(' ')[0], // Format time as HH:MM:SS
+    };
+
+    // ✅ Upload to Filebase
+    const filebaseUrl = await uploadToFilebase(deliveryData);
+    if (!filebaseUrl) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await writeContract({
+        ...contractConfig,
+        functionName: "registerOrder",
+        args: [filebaseUrl], // ✅ Store only the Filebase URL on the blockchain
+      });
+
+      setLoading(false);
+      Alert.alert("Success", `Order #${orderId} stored on blockchain!`);
+
+      // ✅ Redirect to Delivery Details
+      navigation.navigate("DeliveryDetails", { orderId });
+    } catch (error) {
+      setLoading(false);
+      console.error("Transaction Failed:", error);
+      Alert.alert("Transaction Failed", error.message);
+    }
   }
 
   return (
@@ -258,8 +501,14 @@ export default function ScheduleDelivery() {
         </View>
 
         {/* Next Button */}
-        <TouchableOpacity style={styles.nextButton}>
-          <Text style={styles.nextButtonText}>Next</Text>
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          <Text style={styles.nextButtonText}>
+            {loading ? "Processing..." : "Submit & Proceed"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

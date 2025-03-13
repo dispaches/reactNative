@@ -1,3 +1,20 @@
+import "@walletconnect/react-native-compat";
+import { WagmiProvider, useAccount, useWriteContract } from "wagmi";
+import {
+  mainnet,
+  sepolia,
+  arbitrum,
+  base,
+  scroll,
+  polygon,
+} from "@wagmi/core/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  defaultWagmiConfig,
+  createAppKit,
+} from "@reown/appkit-wagmi-react-native";
+
+
 import React, { createContext, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -19,9 +36,10 @@ import Login from "./screens/Auth/onboarding/Login";
 import UserDashboard from "./screens/user/UserDashboard";
 import InstantDelivery from "./screens/user/InstantDelivery";
 import ScheduleDelivery from "./screens/user/ScheduleDelivery";
+import DeliveryDetails from "./screens/user/DeliveryDetails";
 import { useFonts } from "expo-font";
 import { WalletProvider } from './walletContext/WalletContext';
-import { WagmiProvider } from "wagmi";
+
 export const LoginContext = createContext();
 
 const Stack = createNativeStackNavigator();
@@ -45,9 +63,45 @@ export default function App() {
   if (!fontsLoaded) {
     return null; 
   }
+// Query client
+const queryClient = new QueryClient();
+const projectId = "a1ac3f9aafd617a3705c88053470876e";
+
+// Blockchain metadata
+const metadata = {
+  name: "Dispatches",
+  description: "Decentralized Logistics Platform",
+  url: "https://dispatches.com",
+  icons: ["https://avatars.githubusercontent.com/u/179229932"],
+  redirect: {
+    native: "YOUR_APP_SCHEME://",
+    universal: "YOUR_APP_UNIVERSAL_LINK.com",
+  },
+};
+
+// Blockchain setup
+const chains = [mainnet, sepolia, arbitrum, base, scroll, polygon];
+const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
+
+// Initialize AppKit
+createAppKit({
+  projectId,
+  wagmiConfig,
+  defaultChain: mainnet,
+  enableAnalytics: true,
+  features: {
+    analytics: true,
+    email: true,
+    socials: ["Google", "X", "github", "discord", "farcaster"],
+    emailShowWallets: true,
+  },
+  themeMode: "light",
+});
+
 
   return (
-    
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
     <LoginProvider value={{ userRole, setUserRole }}>
       <WalletProvider>
       <NavigationContainer>
@@ -68,10 +122,13 @@ export default function App() {
           <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
             <Stack.Screen name="UserDashboard" component={UserDashboard} options={{ headerShown: false }} />
             <Stack.Screen name="InstantDelivery" component={InstantDelivery} options={{ headerShown: false }} />
-            <Stack.Screen name="ScheduleDelivery" component={ScheduleDelivery} options={{ headerShown: false }} />
+                <Stack.Screen name="ScheduleDelivery" component={ScheduleDelivery} options={{ headerShown: false }} />
+                <Stack.Screen name="DeliveryDetails" component={DeliveryDetails} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
       </WalletProvider>
-    </LoginProvider>
+        </LoginProvider>
+        </QueryClientProvider>
+        </WagmiProvider>
   );
 }

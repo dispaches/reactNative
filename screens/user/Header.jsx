@@ -1,5 +1,29 @@
-import React, { useState, useRef } from "react";
+import "@walletconnect/react-native-compat";
+import {
+  WagmiProvider,
+  useAccount,
+  useBalance,
+  useWriteContract,
+  useContractRead,
+  useDisconnect,
+} from "wagmi";
+import {
+  mainnet,
+  sepolia,
+  arbitrum,
+  base,
+  scroll,
+  polygon,
+} from "@wagmi/core/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  defaultWagmiConfig,
+  createAppKit,
+  AppKit,
+} from "@reown/appkit-wagmi-react-native";
+import { AppKitButton, useAppKit } from "@reown/appkit-wagmi-react-native";
 
+import React, { useState, useRef, useContext, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -8,21 +32,74 @@ import {
   Animated,
   Dimensions,
   SafeAreaView,
-  Clipboard,
   Alert,
 } from "react-native";
-
 import Icon from "react-native-vector-icons/MaterialIcons";
-import { WalletContext } from "../../walletContext/WalletContext";
-import { useContext, useEffect } from "react";
-const { width, height } = Dimensions.get("window");
-const MENU_WIDTH = (2 / 3) * width; // 2/3 of the screen width
+import { useNavigation } from "@react-navigation/native";
+// import Clipboard from "@react-native-clipboard/clipboard";
+import { WalletContext } from "../../walletContext/WalletContext"; // Ensure correct import path
 
+
+const { width, height } = Dimensions.get("window");
+const MENU_WIDTH = (2 / 3) * width; // Side menu width
+
+// Query client
+const queryClient = new QueryClient();
+const projectId = "a1ac3f9aafd617a3705c88053470876e";
+
+// Blockchain metadata
+const metadata = {
+  name: "Dispatches",
+  description: "Decentralized Logistics Platform",
+  url: "https://dispatches.com",
+  icons: ["https://avatars.githubusercontent.com/u/179229932"],
+  redirect: {
+    native: "YOUR_APP_SCHEME://",
+    universal: "YOUR_APP_UNIVERSAL_LINK.com",
+  },
+};
+
+// Blockchain setup
+const chains = [mainnet, sepolia, arbitrum, base, scroll, polygon];
+const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
+
+// Initialize AppKit
+createAppKit({
+  projectId,
+  wagmiConfig,
+  defaultChain: mainnet,
+  enableAnalytics: true,
+  features: {
+    analytics: true,
+    email: true,
+    socials: ["Google", "X", "github", "discord", "farcaster"],
+    emailShowWallets: true,
+  },
+  themeMode: "light",
+});
+
+// ✅ Main Component
 export default function Header() {
-  const { walletAddress, balance } = useContext(WalletContext);
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <HeaderScreen />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+ function HeaderScreen() {
+  const { walletAddress, setWalletAddress, setBalance } = useContext(WalletContext);
   const [showMenu, setShowMenu] = useState(false);
-  const [selectedMenuItem, setSelectedMenuItem] = useState("Home"); // Track active menu item
+  const [selectedMenuItem, setSelectedMenuItem] = useState("Home");
   const slideAnim = useRef(new Animated.Value(-MENU_WIDTH)).current;
+  const { disconnect } = useDisconnect();
+  const navigation = useNavigation();
+  // ✅ Debugging: Check if walletAddress exists
+  useEffect(() => {
+    console.log("Wallet Address from Context:", walletAddress);
+  }, [walletAddress]);
 
   const toggleSideMenu = () => {
     if (showMenu) {
@@ -40,17 +117,28 @@ export default function Header() {
       }).start();
     }
   };
+
+  // ✅ Shorten wallet address for display
   const shortenAddress = (walletAddress) => {
-    return walletAddress
-      ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-      : "";
+    return walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not Connected";
   };
 
-  const copyToClipboard = (walletAddress) => {
-    Clipboard.setString(walletAddress);
-    Alert.alert("Copied!", "Wallet address copied to clipboard.");
+  const copyToClipboard = () => {
+    if (walletAddress) {
+      Clipboard.setString(walletAddress);
+      Alert.alert("Copied!", "Wallet address copied to clipboard.");
+    } else {
+      Alert.alert("No Address", "No wallet address found.");
+    }
   };
-
+  const handleDisconnect = () => {
+    disconnect(); // Calls Wagmi's disconnect function
+    setWalletAddress(null); // Reset wallet state
+    setBalance(0);
+    Alert.alert("Disconnected", "Your wallet has been disconnected.", [
+      { text: "OK", onPress: () => navigation.replace("GettingStarted") }, 
+    ]);
+  };
   return (
     <SafeAreaView>
       <View style={styles.container}>
@@ -59,7 +147,7 @@ export default function Header() {
           <TouchableOpacity onPress={toggleSideMenu} style={styles.menuButton}>
             <Icon name="menu" size={30} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.logo}>Welcome </Text>
+          <Text style={styles.logo}>Welcome</Text>
           <TouchableOpacity>
             <Icon name="notifications" size={30} color="#333" />
           </TouchableOpacity>
@@ -74,9 +162,8 @@ export default function Header() {
           />
         )}
 
-        <Animated.View
-          style={[styles.sideMenu, { transform: [{ translateX: slideAnim }] }]}
-        >
+        {/* Side Menu */}
+        <Animated.View style={[styles.sideMenu, { transform: [{ translateX: slideAnim }] }]}>
           {/* Close Button */}
           <TouchableOpacity onPress={toggleSideMenu} style={styles.closeButton}>
             <Icon name="close" size={30} color="#333" />
@@ -89,41 +176,38 @@ export default function Header() {
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.name}>Davidson Edgar</Text>
-
-              <Text
-                style={styles.address}
-                onPress={() => copyToClipboard(walletAddress)}
-              >
-                {" "}
-                {shortenAddress(walletAddress)}
-              </Text>
+              <TouchableOpacity onPress={copyToClipboard}>
+                <Text style={styles.address}>{shortenAddress(walletAddress)}</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
           {/* Menu Items */}
           <View style={styles.menuItems}>
-            {["Home", "Profile", "Notifications", "Settings", "Support"].map(
-              (item) => (
-                <TouchableOpacity
-                  key={item}
-                  onPress={() => setSelectedMenuItem(item)}
+            {["Home", "Profile", "Notifications", "Settings", "Support"].map((item) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setSelectedMenuItem(item)}
+                style={[
+                  styles.menuItem,
+                  selectedMenuItem === item && styles.activeMenuItem,
+                ]}
+              >
+                <Text
                   style={[
-                    styles.menuItem,
-                    selectedMenuItem === item && styles.activeMenuItem, // Apply active style
+                    styles.menuText,
+                    selectedMenuItem === item && styles.activeMenuText,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.menuText,
-                      selectedMenuItem === item && styles.activeMenuText, // Change text color for active item
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              )
-            )}
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
+          <TouchableOpacity onPress={handleDisconnect} style={styles.disconnectButton}>
+            <Text style={styles.disconnectText}>Disconnect Wallet</Text>
+          </TouchableOpacity>
+
         </Animated.View>
       </View>
     </SafeAreaView>
@@ -150,7 +234,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     color: "#333",
-    fontFamily: "Poppins-SemiBold",
   },
   overlay: {
     position: "absolute",
@@ -215,6 +298,7 @@ const styles = StyleSheet.create({
   address: {
     fontSize: 14,
     color: "gray",
+    textDecorationLine: "underline",
   },
   menuItems: {
     marginTop: 20,
@@ -231,9 +315,20 @@ const styles = StyleSheet.create({
     color: "#003366",
   },
   activeMenuItem: {
-    backgroundColor: "#007AFF", // Highlight background when active
+    backgroundColor: "#007AFF",
   },
   activeMenuText: {
-    color: "#fff", // Change text color when active
+    color: "#f2f2f2",
+  },
+  disconnectButton: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "red",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  disconnectText: {
+    color: "#f2f2f2",
+    fontWeight: "bold",
   },
 });
